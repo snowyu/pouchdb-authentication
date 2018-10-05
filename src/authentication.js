@@ -25,7 +25,15 @@ function logIn(username, password, opts) {
     data: {name: username, password: password},
   }, opts.ajax || {});
   // ajaxCore(ajaxOpts, wrapError(callback));
-  return axios(ajaxOpts);
+  return axios(ajaxOpts).then(res => {
+    if (res.ok && opts.basicAuth !== false) {
+      if (!db.__opts) {
+        db.__opts = {};
+      }
+      db.__opts.auth = {username, password};
+    }
+    return res;
+  });
 }
 
 function logOut(opts) {
@@ -39,7 +47,27 @@ function logOut(opts) {
     headers: getBasicAuthHeaders(db),
   }, opts.ajax || {});
   // ajaxCore(ajaxOpts, wrapError(callback));
-  return axios(ajaxOpts);
+  // let result;
+  // try {
+  //   result = await axios(ajaxOpts);
+  // } catch (err) {
+  //   if (err.status !== 401) throw err;
+  // }
+  // if (db.__opts && db.__opts.auth) db.__opts.auth = null;
+  // return result;
+
+  return axios(ajaxOpts)
+  .catch(err => {
+    if (err.status !== 401) {
+      throw err;
+    }
+  })
+  .then(res => {
+    if (db.__opts && db.__opts.auth) {
+      db.__opts.auth = null;
+    }
+    return res;
+  });
 }
 
 function getSession(opts) {
