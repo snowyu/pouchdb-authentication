@@ -1214,6 +1214,7 @@ function axios(opts) {
   return Axios(opts).then(function (res) {
     return res.data;
   }).catch(function (err) {
+    // console.log('err', err.message, err.request.method, err.request._header)
     if (err.response.data) {
       Object.assign(err, err.response.data);
 
@@ -1516,7 +1517,20 @@ function logIn(username, password, opts) {
     }
   }, opts.ajax || {}); // ajaxCore(ajaxOpts, wrapError(callback));
 
-  return axios(ajaxOpts);
+  return axios(ajaxOpts).then(function (res) {
+    if (res.ok && opts.basicAuth !== false) {
+      if (!db.__opts) {
+        db.__opts = {};
+      }
+
+      db.__opts.auth = {
+        username: username,
+        password: password
+      };
+    }
+
+    return res;
+  });
 }
 
 function logOut(opts) {
@@ -1531,8 +1545,26 @@ function logOut(opts) {
     url: getSessionUrl(db),
     headers: getBasicAuthHeaders(db)
   }, opts.ajax || {}); // ajaxCore(ajaxOpts, wrapError(callback));
+  // let result;
+  // try {
+  //   result = await axios(ajaxOpts);
+  // } catch (err) {
+  //   if (err.status !== 401) throw err;
+  // }
+  // if (db.__opts && db.__opts.auth) db.__opts.auth = null;
+  // return result;
 
-  return axios(ajaxOpts);
+  return axios(ajaxOpts).catch(function (err) {
+    if (err.status !== 401) {
+      throw err;
+    }
+  }).then(function (res) {
+    if (db.__opts && db.__opts.auth) {
+      db.__opts.auth = null;
+    }
+
+    return res;
+  });
 }
 
 function getSession(opts) {
